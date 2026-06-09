@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zuma Talent — Calendario Editorial</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EEE9;--border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--text:#1A1917;--text2:#6B6860;--text3:#9E9B95;--zuma:#5B2D8E;--zuma2:#2D1B69;--lime:#C8D830;--radius:10px;--radius-lg:14px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .header{background:var(--zuma);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+  .logo{font-size:15px;font-weight:600;letter-spacing:-0.02em;display:flex;align-items:center;gap:8px;color:#fff}
+  .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--lime)}
+  .header-right{display:flex;align-items:center;gap:10px}
+  .sync-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.3);background:transparent;font-family:'DM Sans',sans-serif;font-size:12px;color:#fff;cursor:pointer;transition:all .15s}
+  .sync-btn:hover{background:rgba(255,255,255,0.15)}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--lime)}
+  .sync-dot.syncing{background:#FAC775;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .last-sync{font-size:11px;color:rgba(255,255,255,0.7);font-family:'DM Mono',monospace}
+  .main{padding:20px 28px;max-width:1100px;margin:0 auto}
+
+  /* TABS */
+  .page-tabs{display:flex;gap:2px;margin-bottom:20px;background:var(--surface2);padding:3px;border-radius:var(--radius);width:fit-content}
+  .page-tab{padding:7px 16px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:8px;transition:all .15s}
+  .page-tab.active{background:var(--zuma);color:white}
+
+  /* CALENDAR STYLES */
+  .cal-section{display:none}.cal-section.active{display:block}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:18px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px}
+  .stat-n{font-size:22px;font-weight:600;letter-spacing:-.03em}
+  .stat-l{font-size:11px;color:var(--text3);margin-top:2px}
+  .stat-n.green{color:#3B6D11}.stat-n.amber{color:#854F0B}.stat-n.red{color:#A32D2D}.stat-n.blue{color:#185FA5}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .view-toggle{display:flex;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden}
+  .vt-btn{padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;border:none;background:transparent;color:var(--text2);cursor:pointer;transition:all .1s}
+  .vt-btn.active{background:var(--zuma);color:white}
+  .search-box{flex:1;min-width:160px;position:relative}
+  .search-box input{width:100%;padding:7px 10px 7px 32px;font-family:'DM Sans',sans-serif;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none}
+  .search-box input:focus{border-color:var(--zuma)}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none}
+  .filter-select{padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);outline:none;cursor:pointer}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);cursor:pointer;padding:3px 7px;border-radius:99px;border:1px solid transparent;transition:all .1s}
+  .leg-item:hover{border-color:var(--border2);color:var(--text2)}
+  .leg-item.active-filter{border-color:var(--border2);background:var(--surface);color:var(--text)}
+  .leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .month-group{margin-bottom:24px}
+  .month-header{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .month-count{font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;background:var(--surface2);padding:2px 7px;border-radius:99px}
+  .post-row{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);margin-bottom:4px;overflow:hidden;transition:all .1s}
+  .post-row:hover{border-color:var(--border2)}
+  .post-row-top{display:grid;grid-template-columns:38px 8px 1fr auto;align-items:start;gap:10px;padding:9px 12px;cursor:pointer}
+  .post-date{font-size:11px;font-weight:500;color:var(--text3);font-family:'DM Mono',monospace;padding-top:2px}
+  .post-cat-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+  .post-body{min-width:0}
+  .post-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+  .post-tags{display:flex;flex-wrap:wrap;gap:4px}
+  .tag{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:500;white-space:nowrap}
+  .tag-ig{background:#FBEAF0;color:#72243E}.tag-tt{background:#E6F1FB;color:#0C447C}.tag-li{background:#E1F5EE;color:#085041}
+  .tag-listo{background:#D4EDDA;color:#155724}.tag-publicado{background:#D4EDDA;color:#155724}.tag-proceso{background:#FFF3CD;color:#856404}.tag-curso{background:#FFF3CD;color:#856404}
+  .tag-retrasado{background:#F8D7DA;color:#721C24}.tag-programado{background:#E1F5EE;color:#0F6E56}
+  .post-meta-right{text-align:right;min-width:90px}
+  .post-resp{font-size:10px;color:var(--text3)}
+  .expand-btn{font-size:11px;color:var(--text3);cursor:pointer;padding:2px 6px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);transition:all .1s;white-space:nowrap;margin-top:4px;display:inline-block}
+  .expand-btn:hover{background:var(--surface);color:var(--text2)}
+  .notes-panel{display:none;border-top:1px solid var(--border);padding:12px 16px;background:#FAFAF8}
+  .notes-panel.open{display:block}
+  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .notes-col-title{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+  .copy-from-sheet{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.6;min-height:60px}
+  .copy-empty{color:var(--text3);font-style:italic}
+  .notes-textarea{width:100%;min-height:80px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--surface);color:var(--text);resize:vertical;outline:none;line-height:1.6}
+  .notes-textarea:focus{border-color:var(--zuma)}
+  .notes-textarea::placeholder{color:var(--text3)}
+  .notes-actions{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .save-note-btn{padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;border-radius:var(--radius);border:none;background:var(--zuma);color:white;cursor:pointer}
+  .save-note-btn:hover{opacity:.85}
+  .saved-msg{font-size:11px;color:#3B6D11;display:none}
+  .saved-msg.show{display:inline}
+  .cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .cal-nav-btn{width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .cal-nav-btn:hover{background:var(--surface2)}
+  .cal-month-title{font-size:15px;font-weight:600;letter-spacing:-.02em}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-day-head{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:center;padding:5px 0}
+  .cal-cell{min-height:80px;border:1px solid var(--border);border-radius:var(--radius);padding:5px;background:var(--surface)}
+  .cal-cell.other-month{background:var(--surface2);opacity:.5}
+  .cal-cell.today-cell{border-color:var(--zuma);border-width:2px}
+  .cal-date-num{font-size:14px;font-weight:600;color:#1A1917;margin-bottom:3px;font-family:'DM Mono',monospace}
+  .cal-chip{font-size:9px;padding:2px 5px;border-radius:5px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:3px;line-height:1.5;font-weight:500;color:#1A1917}
+  .cal-dot-s{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+  .cal-more{font-size:9px;color:var(--text3);padding:1px 3px}
+  .empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
+  .empty-state p{font-size:13px}
+  .week-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .week-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);white-space:nowrap}
+  .week-posts{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+  .week-chip{font-size:11px;padding:3px 9px;border-radius:99px;font-weight:500}
+
+  /* BRIEFING */
+  .brief-hero{background:linear-gradient(135deg,var(--zuma2) 0%,var(--zuma) 100%);border-radius:16px;padding:28px;margin-bottom:20px;color:white}
+  .brief-hero-tag{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--lime);margin-bottom:6px}
+  .brief-hero-title{font-size:24px;font-weight:600;margin-bottom:4px}
+  .brief-hero-sub{font-size:12px;opacity:0.6}
+  .brief-section{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin:20px 0 10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)}
+  .brief-field{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:8px}
+  .brief-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .brief-input{width:100%;font-size:13px;padding:8px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-family:inherit;outline:none}
+  .brief-input:focus{border-color:var(--zuma);background:var(--surface)}
+  .brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .brief-check{display:flex;flex-wrap:wrap;gap:12px;padding:4px 0}
+  .brief-check label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer}
+  .brief-check input{cursor:pointer;accent-color:var(--zuma)}
+  .req{font-size:9px;padding:2px 6px;border-radius:99px;background:#FAEEDA;color:#854F0B;font-weight:500}
+  .brief-submit{width:100%;padding:12px;background:var(--zuma);color:white;border:none;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;margin-top:16px;transition:opacity .15s}
+  .brief-submit:hover{opacity:.88}
+  .brief-success{display:none;background:#EAF3DE;border:1px solid #C0DD97;border-radius:var(--radius-lg);padding:20px;text-align:center;margin-top:16px}
+  .brief-success.show{display:block}
+  .flujo-step{display:flex;gap:12px;margin-bottom:10px}
+  .flujo-num{width:28px;height:28px;border-radius:50%;background:var(--zuma2);color:white;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .flujo-body{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:12px 14px}
+  .flujo-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px}
+  .flujo-desc{font-size:12px;color:var(--text2);line-height:1.6}
+  .flujo-time{font-size:10px;font-weight:500;padding:2px 8px;border-radius:99px;background:var(--lime);color:#1A1917;margin-left:6px}
+  .flujo-urgent{border-left:3px solid #A32D2D;border-radius:0 var(--radius-lg) var(--radius-lg) 0}
+  .flujo-ok{border-left:3px solid #3B6D11;border-radius:0 var(--radius-lg) var(--radius-lg) 0}
+  .tip-box{background:#EAF3DE;border:0.5px solid #C0DD97;border-radius:var(--radius-md);padding:10px 14px;font-size:12px;color:#27500A;margin-top:16px}
+  .alert-box{background:#FCEBEB;border:0.5px solid #F09595;border-radius:var(--radius-md);padding:10px 14px;font-size:12px;color:#791F1F;margin-bottom:16px}
+  .brief-tabs{display:flex;gap:2px;background:var(--surface2);padding:3px;border-radius:var(--radius);width:fit-content;margin-bottom:20px}
+  .brief-tab{padding:6px 14px;font-size:12px;font-weight:500;border:none;background:transparent;color:var(--text2);cursor:pointer;border-radius:8px;transition:all .15s}
+  .brief-tab.active{background:var(--surface);color:var(--text);border:0.5px solid var(--border2)}
+  .brief-sub{display:none}.brief-sub.active{display:block}
+  /* REPORTE */
+  .rpt-hero{background:linear-gradient(135deg,var(--zuma2) 0%,var(--zuma) 100%);border-radius:16px;padding:36px;margin-bottom:20px;color:white;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px}
+  .rpt-hero-left{}
+  .rpt-hero-tag{font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--lime);margin-bottom:8px}
+  .rpt-hero-title{font-size:30px;font-weight:600;letter-spacing:-0.03em;margin-bottom:4px}
+  .rpt-hero-sub{font-size:13px;opacity:0.6}
+  .rpt-hero-stats{display:flex;gap:24px;flex-wrap:wrap}
+  .rpt-hero-stat{text-align:center}
+  .rpt-hero-stat-n{font-size:26px;font-weight:600;color:var(--lime);letter-spacing:-0.02em}
+  .rpt-hero-stat-l{font-size:11px;opacity:0.7;margin-top:2px}
+  .rpt-section-title{font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .rpt-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:8px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+  .kpi-card::after{content:"";position:absolute;bottom:0;left:0;right:0;height:3px}
+  .kpi-card.ig::after{background:#E1306C}
+  .kpi-card.fb::after{background:#1877F2}
+  .kpi-card.tt::after{background:#1A1917}
+  .kpi-platform{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;gap:5px}
+  .kpi-n{font-size:28px;font-weight:600;letter-spacing:-0.03em;color:var(--text);line-height:1}
+  .kpi-label{font-size:11px;color:var(--text2);margin-top:4px}
+  .kpi-delta{font-size:11px;font-weight:500;margin-top:5px;display:flex;align-items:center;gap:3px}
+  .kpi-delta.up{color:#3B6D11}.kpi-delta.down{color:#A32D2D}
+  .rpt-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:4px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px}
+  .chart-card.full{grid-column:1/-1}
+  .chart-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+  .chart-sub{font-size:11px;color:var(--text3);margin-bottom:16px}
+  .chart-wrap{position:relative;height:180px}
+  .chart-wrap.tall{height:220px}
+  .rpt-insights{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:4px}
+  .ins-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .ins-icon{font-size:22px;margin-bottom:8px}
+  .ins-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+  .ins-text{font-size:11px;color:var(--text2);line-height:1.6}
+  .rpt-next{background:var(--lime);border-radius:12px;padding:20px 24px;margin-top:4px}
+  .rpt-next-title{font-size:13px;font-weight:600;color:#1A1917;margin-bottom:10px}
+  .rpt-next-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .rpt-next-chip{background:rgba(0,0,0,0.12);color:#1A1917;font-size:11px;font-weight:500;padding:4px 12px;border-radius:99px}
+
+  @media(max-width:600px){
+    .main{padding:14px}.header{padding:0 14px}
+    .notes-grid{grid-template-columns:1fr}
+    .post-row-top{grid-template-columns:32px 8px 1fr}
+    .post-meta-right{display:none}
+    .rpt-charts{grid-template-columns:1fr}
+    .rpt-insights{grid-template-columns:1fr}
+    .rpt-hero{padding:20px}
+    .rpt-hero-title{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo"><div class="logo-dot"></div>Zuma Talent — Calendario</div>
+  <div class="header-right">
+    <span class="last-sync" id="last-sync">Cargando...</span>
+    <button class="sync-btn" onclick="loadSheet()"><span class="sync-dot" id="sync-dot"></span>Actualizar</button>
+  </div>
+</header>
+<main class="main">
+  <!-- TABS PRINCIPALES -->
+  <div class="page-tabs">
+    <button class="page-tab active" id="ptab-cal" onclick="setPage('cal')">📅 Calendario</button>
+    <button class="page-tab" id="ptab-prod" onclick="setPage('prod')">📋 Producción</button>
+    <button class="page-tab" id="ptab-rpt" onclick="setPage('rpt')">📊 Reporte Mayo 2026</button>
+  </div>
+
+  <!-- SECCIÓN CALENDARIO -->
+  <div class="cal-section active" id="page-cal">
+    <div class="week-bar" id="week-bar"></div>
+    <div class="stats" id="stats"></div>
+    <div class="controls">
+      <div class="view-toggle">
+        <button class="vt-btn active" id="btn-list" onclick="setView('list')">Lista</button>
+        <button class="vt-btn" id="btn-cal" onclick="setView('cal')">Mes</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="q" placeholder="Buscar publicación o actor..." oninput="renderAll()">
+      </div>
+      <select class="filter-select" id="fm" onchange="renderAll()">
+        <option value="">Todos los meses</option>
+        <option value="2026-01">Enero 2026</option><option value="2026-02">Febrero 2026</option>
+        <option value="2026-03">Marzo 2026</option><option value="2026-04">Abril 2026</option>
+        <option value="2026-05">Mayo 2026</option><option value="2026-06">Junio 2026</option>
+        <option value="2026-07">Julio 2026</option>
+      </select>
+      <select class="filter-select" id="fs" onchange="renderAll()">
+        <option value="">Todos los status</option>
+        <option>Listo</option><option>En proceso</option><option>Retrasado</option><option>Programado</option>
+      </select>
+      <select class="filter-select" id="fr" onchange="renderAll()">
+        <option value="">Todas las responsables</option>
+        <option>Noemi Fernández</option><option>Desire Hernández</option>
+        <option>Claudia Domínguez</option><option>María Fernanda García</option>
+      </select>
+      <select class="filter-select" id="fc" onchange="renderAll()">
+        <option value="">Categorías</option>
+        <option>TALENTO ZUMA</option><option>ESTRENOS/ FINAL</option><option>CUMPLEAÑOS</option>
+        <option>GRÁFICOS</option><option>GET TO KNOW</option><option>REALITY FORO</option>
+        <option>HABLANDO DE</option><option>REFLEXION</option><option>CASTING</option>
+        <option>DEMO</option><option>TRAILER</option><option>BIENVENIDA</option>
+        <option>EQUIPO ZUMA</option><option>TODAS LAS CARAS DE</option><option>TEMPORALIDAD</option>
+        <option>DINAMICAS</option><option>TB</option><option>REACCION A PERSONAJES</option>
+      </select>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div id="main-view"></div>
+  </div>
+
+  <!-- SECCIÓN PRODUCCIÓN -->
+  <div class="cal-section" id="page-prod">
+    <div class="brief-tabs">
+      <button class="brief-tab active" id="btab-briefing" onclick="showBrief('briefing')">📝 Briefing de contenido</button>
+      <button class="brief-tab" id="btab-flujo" onclick="showBrief('flujo')">⚡ Estreno urgente</button>
+    </div>
+
+    <!-- BRIEFING -->
+    <div class="brief-sub active" id="brief-briefing">
+      <div class="brief-hero">
+        <div class="brief-hero-tag">Zuma Talent — Producción</div>
+        <div class="brief-hero-title">Briefing de contenido</div>
+        <div class="brief-hero-sub">Llena este formulario para cada publicación que necesita material nuevo — se guarda directo en el Sheet</div>
+      </div>
+
+      <div class="brief-section">Información general</div>
+      <div class="brief-grid">
+        <div class="brief-field">
+          <div class="brief-label">Actor / Talento <span class="req">Requerido</span></div>
+          <input class="brief-input" type="text" id="b-actor" placeholder="Ej. Gaby Platas">
+        </div>
+        <div class="brief-field">
+          <div class="brief-label">Fecha de publicación <span class="req">Requerido</span></div>
+          <input class="brief-input" type="text" id="b-fecha" placeholder="DD/MM/YYYY">
+        </div>
+      </div>
+      <div class="brief-grid">
+        <div class="brief-field">
+          <div class="brief-label">Categoría <span class="req">Requerido</span></div>
+          <select class="brief-input" id="b-cat">
+            <option value="">Selecciona...</option>
+            <option>TALENTO ZUMA</option><option>ESTRENOS/ FINAL</option><option>GRÁFICOS</option>
+            <option>GET TO KNOW</option><option>REALITY FORO</option><option>TODAS LAS CARAS DE</option>
+            <option>HABLANDO DE</option><option>DEMO</option><option>CASTING</option>
+            <option>BIENVENIDA</option><option>EQUIPO ZUMA</option><option>TEMPORALIDAD</option>
+            <option>TB</option><option>REFLEXION</option><option>CUMPLEAÑOS</option><option>DINAMICAS</option>
+          </select>
+        </div>
+        <div class="brief-field">
+          <div class="brief-label">Responsable</div>
+          <select class="brief-input" id="b-resp">
+            <option value="">Selecciona...</option>
+            <option>Noemi Fernández</option><option>Desire Hernández</option>
+            <option>Claudia Domínguez</option><option>María Fernanda García</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="brief-section">Plataforma y proyecto</div>
+      <div class="brief-field">
+        <div class="brief-label">Plataforma <span class="req">Requerido</span></div>
+        <div class="brief-check">
+          <label><input type="radio" name="b-canal" value="Instagram"> Instagram</label>
+          <label><input type="radio" name="b-canal" value="Tiktok"> TikTok</label>
+          <label><input type="radio" name="b-canal" value="LINKEDIN"> LinkedIn</label>
+          <label><input type="radio" name="b-canal" value="Instagram y Tiktok"> Instagram y TikTok</label>
+        </div>
+      </div>
+      <div class="brief-field">
+        <div class="brief-label">Proyecto / Serie <span style="font-size:9px;padding:2px 6px;border-radius:99px;background:var(--surface2);color:var(--text3);font-weight:500">Opcional</span></div>
+        <input class="brief-input" type="text" id="b-proyecto" placeholder='Ej. "Guardián De Mi Vida" — ViX'>
+      </div>
+
+      <div class="brief-section">Material y notas</div>
+      <div class="brief-field">
+        <div class="brief-label">Notas para producción</div>
+        <textarea class="brief-input" id="b-notas" rows="3" placeholder="Material necesario, referencias visuales, formato, cualquier detalle importante..."></textarea>
+      </div>
+
+      <button class="brief-submit" onclick="enviarBriefing()">Guardar en el calendario →</button>
+      <div class="brief-success" id="brief-success">
+        <div style="font-size:24px;margin-bottom:8px">✅</div>
+        <div style="font-size:14px;font-weight:500;color:#3B6D11;margin-bottom:4px">Guardado en el Sheet</div>
+        <div style="font-size:12px;color:#27500A">El post aparecerá en el calendario al dar clic en "Actualizar"</div>
+      </div>
+    </div>
+
+    <!-- FLUJO URGENTE -->
+    <div class="brief-sub" id="brief-flujo">
+      <div class="brief-hero">
+        <div class="brief-hero-tag">Zuma Talent — Protocolo urgente</div>
+        <div class="brief-hero-title">Estreno de último minuto</div>
+        <div class="brief-hero-sub">Qué hacer cuando llega un estreno sorpresa — objetivo: publicar en menos de 3 horas</div>
+      </div>
+      <div class="alert-box">⚠️ Este flujo aplica cuando el estreno no estaba en el calendario o se adelantó sin aviso.</div>
+      <div class="flujo-step"><div class="flujo-num">1</div><div class="flujo-body flujo-urgent"><div class="flujo-title">Confirmar el estreno <span class="flujo-time">0–10 min</span></div><div class="flujo-desc">Verificar en la plataforma que el contenido ya está disponible. Tomar screenshot del banner oficial. Confirmar qué actores de Zuma aparecen y en qué personaje.</div></div></div>
+      <div class="flujo-step"><div class="flujo-num">2</div><div class="flujo-body flujo-urgent"><div class="flujo-title">Conseguir el material <span class="flujo-time">10–30 min</span></div><div class="flujo-desc">Buscar en Drive si ya hay fotos o clips del actor. Si no hay, tomar screenshot de la plataforma o pedir al actor por WhatsApp. En último caso usar el banner oficial como fondo del gráfico.</div></div></div>
+      <div class="flujo-step"><div class="flujo-num">3</div><div class="flujo-body flujo-urgent"><div class="flujo-title">Hacer el gráfico en Canva <span class="flujo-time">30–60 min</span></div><div class="flujo-desc">Usar plantilla de estreno guardada en Canva. Cambiar foto del actor, nombre del proyecto y plataforma. No invertir más de 20 minutos en diseño — publicar rápido es prioridad.</div></div></div>
+      <div class="flujo-step"><div class="flujo-num">4</div><div class="flujo-body flujo-urgent"><div class="flujo-title">Generar el copy <span class="flujo-time">5 min</span></div><div class="flujo-desc">Pedirle a Claude el copy con: nombre del actor, nombre del proyecto entre comillas y mayúsculas, plataforma y de qué trata. Sale en menos de 1 minuto.</div></div></div>
+      <div class="flujo-step"><div class="flujo-num">5</div><div class="flujo-body flujo-urgent"><div class="flujo-title">Aprobación rápida <span class="flujo-time">5–15 min</span></div><div class="flujo-desc">Mandar gráfico y copy por WhatsApp a quien aprueba. Si en 15 minutos no hay respuesta, publicar. Los estrenos tienen ventana corta y cada hora cuenta.</div></div></div>
+      <div class="flujo-step"><div class="flujo-num">6</div><div class="flujo-body flujo-ok"><div class="flujo-title">Publicar y actualizar el calendario <span class="flujo-time">5 min</span></div><div class="flujo-desc">Publicar en Instagram primero, luego compartir a Facebook. Actualizar el Sheet con fecha real y status "Listo". Si hay material extra programar un segundo post para los siguientes 2 días.</div></div></div>
+      <div class="tip-box">💡 Guarda una plantilla de estreno en Canva con el branding de Zuma listo. Así el paso 3 tarda 10 minutos, no 30.</div>
+    </div>
+  </div>
+
+  <!-- SECCIÓN REPORTE -->
+  <div class="cal-section" id="page-rpt">
+    <!-- HERO -->
+    <div class="rpt-hero">
+      <div class="rpt-hero-left">
+        <div class="rpt-hero-tag">Reporte mensual</div>
+        <div class="rpt-hero-title">Mayo 2026</div>
+        <div class="rpt-hero-sub">Zuma Talent — Instagram · Facebook · TikTok</div>
+      </div>
+      <div class="rpt-hero-stats">
+        <div class="rpt-hero-stat">
+          <div class="rpt-hero-stat-n">151k</div>
+          <div class="rpt-hero-stat-l">Visualizaciones FB</div>
+        </div>
+        <div class="rpt-hero-stat">
+          <div class="rpt-hero-stat-n">31.3k</div>
+          <div class="rpt-hero-stat-l">Seguidores IG</div>
+        </div>
+        <div class="rpt-hero-stat">
+          <div class="rpt-hero-stat-n">+37</div>
+          <div class="rpt-hero-stat-l">Nuevos seguidores</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs INSTAGRAM -->
+    <div class="rpt-section-title">Instagram</div>
+    <div class="rpt-kpis">
+      <div class="kpi-card ig">
+        <div class="kpi-platform">📸 Instagram</div>
+        <div class="kpi-n">31,310</div>
+        <div class="kpi-label">Seguidores totales</div>
+        <div class="kpi-delta up">↑ +37 este mes</div>
+      </div>
+      <div class="kpi-card ig">
+        <div class="kpi-platform">📸 Instagram</div>
+        <div class="kpi-n">50.1k</div>
+        <div class="kpi-label">Visualizaciones reels</div>
+        <div class="kpi-delta">11 reels publicados</div>
+      </div>
+      <div class="kpi-card ig">
+        <div class="kpi-platform">📸 Instagram</div>
+        <div class="kpi-n">51.9k</div>
+        <div class="kpi-label">Impresiones historias</div>
+        <div class="kpi-delta">84 historias</div>
+      </div>
+      <div class="kpi-card ig">
+        <div class="kpi-platform">📸 Instagram</div>
+        <div class="kpi-n">324</div>
+        <div class="kpi-label">Me gusta</div>
+        <div class="kpi-delta">18 comentarios · 28 compartidos</div>
+      </div>
+    </div>
+
+    <!-- KPIs FACEBOOK -->
+    <div class="rpt-section-title">Facebook</div>
+    <div class="rpt-kpis">
+      <div class="kpi-card fb">
+        <div class="kpi-platform">👥 Facebook</div>
+        <div class="kpi-n">151.5k</div>
+        <div class="kpi-label">Visualizaciones totales</div>
+        <div class="kpi-delta up">↑ Mejor plataforma del mes</div>
+      </div>
+      <div class="kpi-card fb">
+        <div class="kpi-platform">👥 Facebook</div>
+        <div class="kpi-n">6,049</div>
+        <div class="kpi-label">Reacciones</div>
+        <div class="kpi-delta">3 reels publicados</div>
+      </div>
+      <div class="kpi-card fb">
+        <div class="kpi-platform">👥 Facebook</div>
+        <div class="kpi-n">4,705</div>
+        <div class="kpi-label">Promedio alcance/reel</div>
+        <div class="kpi-delta">13.1k visualizaciones de video</div>
+      </div>
+      <div class="kpi-card fb">
+        <div class="kpi-platform">👥 Facebook</div>
+        <div class="kpi-n">323</div>
+        <div class="kpi-label">Interacciones</div>
+        <div class="kpi-delta">México · Colombia · EEUU</div>
+      </div>
+    </div>
+
+    <!-- KPIs TIKTOK -->
+    <div class="rpt-section-title">TikTok</div>
+    <div class="rpt-kpis">
+      <div class="kpi-card tt">
+        <div class="kpi-platform">♪ TikTok</div>
+        <div class="kpi-n">2,863</div>
+        <div class="kpi-label">Seguidores totales</div>
+        <div class="kpi-delta up">↑ Crecimiento constante</div>
+      </div>
+      <div class="kpi-card tt">
+        <div class="kpi-platform">♪ TikTok</div>
+        <div class="kpi-n">3</div>
+        <div class="kpi-label">Posts publicados</div>
+        <div class="kpi-delta">Plataforma en expansión</div>
+      </div>
+    </div>
+
+    <!-- GRÁFICAS -->
+    <div class="rpt-section-title">Análisis visual</div>
+    <div class="rpt-charts">
+      <div class="chart-card">
+        <div class="chart-title">Interacciones por plataforma</div>
+        <div class="chart-sub">Me gusta + comentarios + compartidos</div>
+        <div class="chart-wrap"><canvas id="chartInteracciones"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Visualizaciones totales</div>
+        <div class="chart-sub">Alcance de contenido por red</div>
+        <div class="chart-wrap"><canvas id="chartVistas"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Audiencia Instagram — Países</div>
+        <div class="chart-sub">Distribución de seguidores</div>
+        <div class="chart-wrap"><canvas id="chartPaises"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Audiencia Instagram — Edad</div>
+        <div class="chart-sub">Rango de edad predominante</div>
+        <div class="chart-wrap"><canvas id="chartEdad"></canvas></div>
+      </div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="rpt-section-title">Insights del mes</div>
+    <div class="rpt-insights">
+      <div class="ins-card">
+        <div class="ins-icon">🏆</div>
+        <div class="ins-title">Mejor plataforma</div>
+        <div class="ins-text">Facebook lideró el mes con 151k visualizaciones. Los reels tuvieron un promedio de alcance de 4,705 por publicación.</div>
+      </div>
+      <div class="ins-card">
+        <div class="ins-icon">👥</div>
+        <div class="ins-title">Audiencia principal</div>
+        <div class="ins-text">Mujeres de 25 a 34 años en México son el núcleo de la comunidad. Ciudad de México concentra el 21.39% de seguidores.</div>
+      </div>
+      <div class="ins-card">
+        <div class="ins-icon">📈</div>
+        <div class="ins-title">TikTok en crecimiento</div>
+        <div class="ins-text">Con solo 3 publicaciones, TikTok mantiene crecimiento orgánico constante. Mayor consistencia en junio puede acelerar el alcance.</div>
+      </div>
+    </div>
+
+    <!-- SIGUIENTE MES -->
+    <div class="rpt-section-title">Siguiente mes — Junio 2026</div>
+    <div class="rpt-next">
+      <div class="rpt-next-title">Prioridades de contenido</div>
+      <div class="rpt-next-chips">
+        <span class="rpt-next-chip">Reality Foro semanal</span>
+        <span class="rpt-next-chip">Hablando de — TikTok</span>
+        <span class="rpt-next-chip">Reflexión — LinkedIn</span>
+        <span class="rpt-next-chip">Pride Day 28 junio</span>
+        <span class="rpt-next-chip">Día del padre 21 junio</span>
+        <span class="rpt-next-chip">Estrenos en ViX y Netflix</span>
+        <span class="rpt-next-chip">Demos nuevos actores</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const POSTS_DATA = [
+["Todas las caras de Sofía Garza","TODAS LAS CARAS DE","20/1/2026","Noemi Fernández","","Listo","Instagram"],
+["David Albiter Cumpleaños","CUMPLEAÑOS","21/1/2026","Desire Hernández","","En proceso","Instagram"],
+["Trailer- Mochaorejas","TRAILER","21/1/2026","Desire Hernández","","Listo","Instagram"],
+["ADO -G","GRÁFICOS","21/1/2026","Claudia Domínguez","","En proceso","Instagram"],
+["Familia a la deriva - E","ESTRENOS/ FINAL","22/1/2026","Claudia Domínguez","","Listo","Instagram"],
+["EL MOCHA OREJAS - E","ESTRENOS/ FINAL","23/1/2026","Claudia Domínguez","","Listo","Instagram"],
+["Thali Inside Zuma","INSIDE ZUMA","24/1/2026","Noemi Fernández","","Listo","Instagram"],
+["Enloqueciendo contigo - E","ESTRENOS/ FINAL","25/1/2026","Claudia Domínguez","","Listo","Instagram"],
+["Fernanda Arozqueta- GTK","GET TO KNOW","26/1/2026","Noemi Fernández","","Listo","Instagram"],
+["Alan Alarcón- G","GRÁFICOS","27/1/2026","Claudia Domínguez","","Listo","Instagram"],
+["Trailer/ LOL","TALENTO ZUMA","28/1/2026","","","Listo","Instagram"],
+["BTS","EQUIPO ZUMA","29/1/2026","Noemi Fernández","","Listo","Instagram"],
+["Marcelo C- Doménica","TALENTO ZUMA","30/1/2026","Noemi Fernández","","Listo","Instagram"],
+["Carmen Aub - Gráficos","GRÁFICOS","31/1/2026","Claudia Domínguez","","Listo","Instagram"],
+["Juan Luis Medina Cumpleaños","CUMPLEAÑOS","31/1/2026","Desire Hernández","","Listo","Instagram"],
+["Hermanas un amor compartido-E","ESTRENOS/ FINAL","2/2/2026","Claudia Domínguez","","Listo","Instagram"],
+["Fermin- Mochaorejas","TALENTO ZUMA","3/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Katixa- C","CUMPLEAÑOS","4/2/2026","Desire Hernández","","Listo","Instagram"],
+["Paulina Ruiz- MOCHAOREJAS","TALENTO ZUMA","4/2/2026","Noemi Fernández","","Listo","Instagram"],
+["David Albiter- GTK","GET TO KNOW","6/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Marco Tre- Mochaorejas","TALENTO ZUMA","7/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Luis Carlos-C","CUMPLEAÑOS","7/2/2026","Desire Hernández","","Listo","Instagram"],
+["Trailer LOL","TALENTO ZUMA","8/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Trailer- La oficina","TALENTO ZUMA","9/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Trailer- Socias por accidente","TALENTO ZUMA","9/2/2026","Desire Hernández","","Listo","Instagram"],
+["Luz María es Rosario en HAM","TALENTO ZUMA","10/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Casting Me late- Solkin","CASTING","11/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Estreno LOL","ESTRENOS/ FINAL","13/2/2026","Claudia Domínguez","","Listo","Instagram"],
+["La celda de los milagros Netflix","ESTRENOS/ FINAL","13/2/2026","Claudia Domínguez","","Listo",""],
+["Amor y amistad","TEMPORALIDAD","14/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Como agua para chocolate 2 - E","ESTRENOS/ FINAL","15/2/2026","Claudia Domínguez","","Listo","Instagram"],
+["Hugo Albores-C","CUMPLEAÑOS","16/2/2026","Desire Hernández","","Listo","Instagram"],
+["Alan Alarcón es Alfredo- dinastía","TALENTO ZUMA","16/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Leonardo Daniel en doménica","TALENTO ZUMA","17/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Marco Trevino en la celda de los milagros","TALENTO ZUMA","19/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Julia en No me sigas","TALENTO ZUMA","20/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Solkin Ruz Celda de los milagros","TALENTO ZUMA","23/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Raquel Garza en LOL","TALENTO ZUMA","24/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Sofía Lama Pecados Inconfesables","CASTING","25/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Gaby Platas- C","CUMPLEAÑOS","25/2/2026","Desire Hernández","","Listo","Instagram"],
+["Marco Treviño- BTS en la celda","CASTING","26/2/2026","Noemi Fernández","","Listo","Instagram"],
+["BTS","EQUIPO ZUMA","27/2/2026","Noemi Fernández","","Listo","Instagram"],
+["Jorge Enrique- C","CUMPLEAÑOS","28/2/2026","Desire Hernández","","Listo","Instagram"],
+["Rocío Verdejo-G","GRÁFICOS","1/3/2026","Claudia Domínguez","","Listo","Instagram"],
+["Un día con Luisa","UN DIA CON","2/3/2026","","","Listo","Instagram"],
+["Bienvenida Claudia Lobo","BIENVENIDA","3/3/2026","","","Programado","Instagram"],
+["Doc-E","ESTRENOS/ FINAL","4/3/2026","Claudia Domínguez","","Listo","Instagram"],
+["Mario Zaragoza- C","CUMPLEAÑOS","5/3/2026","Desire Hernández","","Listo","Instagram"],
+["Fermín Martínez es Santos","TALENTO ZUMA","5/3/2026","Noemi Fernández","","En proceso","Instagram"],
+["Polen- E","ESTRENOS/ FINAL","6/3/2026","Claudia Domínguez","","Listo","Instagram"],
+["Giovanna es Karina HAM","TALENTO ZUMA","7/3/2026","Noemi Fernández","","Listo","Instagram"],
+["Pamela Vargas- C","CUMPLEAÑOS","7/3/2026","Desire Hernández","","Listo","Instagram"],
+["8M","GRÁFICOS","8/3/2026","Claudia Domínguez","","Listo",""],
+["Luisa Buenrostro- C","CUMPLEAÑOS","8/3/2026","Desire Hernández","","Listo","Instagram"],
+["Rocio Verdejo en DOC","TALENTO ZUMA","10/3/2026","Noemi Fernández","","Listo",""],
+["Cess Enriquez - G","GRÁFICOS","11/3/2026","Claudia Domínguez","","Listo","Instagram"],
+["Socias por accidente- E","ESTRENOS/ FINAL","12/3/2026","Claudia Domínguez","","Listo",""],
+["Violentas Mariposas- E","ESTRENOS/ FINAL","12/3/2026","","","Listo",""],
+["Estreno- La oficina","ESTRENOS/ FINAL","13/3/2026","Claudia Domínguez","","Listo",""],
+["Un día con Guillermo","UN DIA CON","14/3/2026","","","Listo",""],
+["Thali- C","CUMPLEAÑOS","14/3/2026","Desire Hernández","","Listo","Instagram"],
+["Giovanna- C","CUMPLEAÑOS","15/3/2026","Desire Hernández","","Listo","Instagram"],
+["Rocio en Polen","TALENTO ZUMA","17/3/2026","","","Listo",""],
+["Guillermo en la oficina","TALENTO ZUMA","19/3/2026","Noemi Fernández","","Listo",""],
+["Mi rival- E","ESTRENOS/ FINAL","20/3/2026","","","Listo",""],
+["Daniel Pacheco- T","TODAS LAS CARAS DE","23/3/2026","Noemi Fernández","","Listo","Instagram"],
+["Marcelo C- Monte verde","TALENTO ZUMA","24/3/2026","","","Listo",""],
+["BTS","EQUIPO ZUMA","29/3/2026","Noemi Fernández","","Listo","Instagram"],
+["Guillermo Quintanilla- C","CUMPLEAÑOS","29/3/2026","Desire Hernández","","Listo","Instagram"],
+["Solkin Ruz- C","CUMPLEAÑOS","30/3/2026","Desire Hernández","","Listo","Instagram"],
+["Casting vs La Oficina","CASTING","30/3/2026","","","Listo",""],
+["Raúl Sandoval-B","BIENVENIDA","31/3/2026","Noemi Fernández","","Listo","Instagram"],
+["Trailer- hasta que amanezca","TALENTO ZUMA","1/4/2026","","","Listo",""],
+["Sylvia Pasquel- G","GRÁFICOS","2/4/2026","Claudia Domínguez","","Listo","Instagram"],
+["Ivanna Synthesize - C","CASTING","3/4/2026","Noemi Fernández","","Listo","Instagram"],
+["Trailer- perfil falso","TALENTO ZUMA","4/4/2026","","","Listo",""],
+["Confirmacion 2da temporada","TALENTO ZUMA","6/4/2026","","","Listo",""],
+["Leonardo Daniel en DOC","TALENTO ZUMA","8/4/2026","Noemi Fernández","","En proceso",""],
+["Dinastía casillas/ E","ESTRENOS/ FINAL","10/4/2026","","","Listo",""],
+["Gio Romo en Hasta que amanezca","TALENTO ZUMA","13/4/2026","","","Listo",""],
+["Marco Trevino en Mi rival","TALENTO ZUMA","14/4/2026","","","Listo","Instagram"],
+["REALITY FORO- julia","REALITY FORO","14/4/2026","","","Listo","Tiktok"],
+["Perfil falso 3","ESTRENOS/ FINAL","15/4/2026","","","Listo",""],
+["Isabella arroyo-D","DEMO","16/4/2026","Noemi Fernández","","Listo","Instagram"],
+["Marco Trevino en DOC","TALENTO ZUMA","17/4/2026","Noemi Fernández","","Listo",""],
+["Arantza Ruiz- C","CUMPLEAÑOS","18/4/2026","","","Listo","Instagram"],
+["Abril Michel- C","CUMPLEAÑOS","18/4/2026","","","Listo","Instagram"],
+["Mariachi- Sofia lama","CASTING","18/4/2026","Noemi Fernández","","Listo","Instagram"],
+["Guillermo Quintanilla- G","GRÁFICOS","19/4/2026","Claudia Domínguez","","Listo","Instagram"],
+["Daniel Mandoki- C","CUMPLEAÑOS","20/4/2026","","","Listo","Instagram"],
+["Jorge Enrique- D","DEMO","20/4/2026","Noemi Fernández","","En proceso","Instagram"],
+["REALITY FORO - Daniel Mandoki","REALITY FORO","21/4/2026","","","Listo","Tiktok"],
+["Ricardo Kleinbaum- C","CUMPLEAÑOS","23/4/2026","","","Listo","Instagram"],
+["Memo Dorantes- C","CUMPLEAÑOS","23/4/2026","","","Listo","Instagram"],
+["Trailer de socias por accidente","TRAILER","23/4/2026","","","Listo",""],
+["Bienvenida Jos","BIENVENIDA","24/4/2026","","","Listo","Instagram"],
+["Un día en los premios Aura","TALENTO ZUMA","27/4/2026","","","Listo",""],
+["Raquel Garza- C","CUMPLEAÑOS","28/4/2026","","","Listo","Instagram"],
+["Trailer- entre padre e hijo","TRAILER","28/4/2026","","","Listo",""],
+["REALITY FORO- Mariana Lodoza","REALITY FORO","30/4/2026","","","Listo","Tiktok"],
+["Día del niño","GRÁFICOS","30/4/2026","","","Listo","Instagram"],
+["Familia a la deriva - E","ESTRENOS/ FINAL","1/5/2026","","","Listo",""],
+["Renata Manterola","CUMPLEAÑOS","2/5/2026","Desire Hernández","","Listo",""],
+["Lidia San Jose en Perfil Falso","TALENTO ZUMA","4/5/2026","","","Listo",""],
+["BTS","EQUIPO ZUMA","5/5/2026","","","Listo","Instagram"],
+["Maria meouchi - Cantando","TALENTO ZUMA","6/5/2026","Noemi Fernández","Marina Soto","En proceso","Instagram"],
+["Estreno Socias por accidente","ESTRENOS/ FINAL","8/5/2026","Desire Hernández","","Listo",""],
+["REALITY FORO- INDIVIDUAL","REALITY FORO","9/5/2026","Desire Hernández","","Listo","Tiktok"],
+["Día de las madres","DINAMICAS","10/5/2026","María Fernanda García","","Listo",""],
+["Pedro Hernández- G","GRÁFICOS","11/5/2026","Desire Hernández","","Listo","Instagram"],
+["REALITY FORO","REALITY FORO","12/5/2026","Desire Hernández","","Listo","Tiktok"],
+["Entre padre e hijo- E","ESTRENOS/ FINAL","13/5/2026","Desire Hernández","","Listo",""],
+["Iran castilllo en Familia a la deriva","TALENTO ZUMA","14/5/2026","Noemi Fernández","","Listo",""],
+["Guardian de mi vida Estreno","ESTRENOS/ FINAL","18/5/2026","Desire Hernández","","Listo",""],
+["Andrea Noli- T","TODAS LAS CARAS DE","20/5/2026","María Fernanda García","","Listo",""],
+["REALITY FORO","REALITY FORO","20/5/2026","Noemi Fernández","","Listo","Tiktok"],
+["Paulina Ruiz- Casting","CASTING","21/5/2026","Noemi Fernández","","Listo",""],
+["Federico Ayos","CUMPLEAÑOS","22/5/2026","Desire Hernández","","Listo",""],
+["Romina","CUMPLEAÑOS","22/5/2026","Desire Hernández","","Listo",""],
+["FUTURO DESIERTO ESTRENÓ","ESTRENOS/ FINAL","22/5/2026","Desire Hernández","","Listo",""],
+["Gaby Platas en Socias por accidente","TALENTO ZUMA","23/5/2026","María Fernanda García","","Listo",""],
+["REALITY FORO","REALITY FORO","26/5/2026","Desire Hernández","","Listo","Tiktok"],
+["Guardian de mi vida Estreno","ESTRENOS/ FINAL","29/5/2026","Desire Hernández","","Listo",""],
+["Camila Selser- C","CUMPLEAÑOS","1/6/2026","Desire Hernández","","Listo","Instagram"],
+["ISABELLA ARROYO EN FUTURO DESIERTO","TALENTO ZUMA","2/6/2026","María Fernanda García","","En proceso",""],
+["REALITY FORO","REALITY FORO","2/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Paulina Ruiz en Entre padre e hijo","TALENTO ZUMA","8/6/2026","María Fernanda García","","En proceso",""],
+["REALITY FORO","REALITY FORO","8/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Daniel Mandoki-D","DEMO","9/6/2026","Noemi Fernández","","En proceso","Instagram"],
+["Sofia Lama- C","CUMPLEAÑOS","9/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Camilia Selse- T","TODAS LAS CARAS DE","10/6/2026","María Fernanda García","","En proceso","Instagram"],
+["Reflexión","REFLEXION","10/6/2026","Desire Hernández","","En proceso","LINKEDIN"],
+["Andrea Noli en Guardian de mi vida","TALENTO ZUMA","11/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Sylvia Pasquel CORE","TALENTO ZUMA","12/6/2026","","","En proceso","Instagram"],
+["Hablando de---Giovanna Romo","HABLANDO DE","12/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Leonardo Daniel- G","GRÁFICOS","13/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Gaby Platas-Guardián","TALENTO ZUMA","14/6/2026","Noemi Fernández","","En proceso",""],
+["Reflexion","REFLEXION","15/6/2026","Desire Hernández","","En proceso","LINKEDIN"],
+["Conoce al equipo","EQUIPO ZUMA","15/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Backdoor- Pilar Lara","TALENTO ZUMA","16/6/2026","Noemi Fernández","","En proceso","Instagram"],
+["REALITY FORO","REALITY FORO","16/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Pedro Hernandez- C","CUMPLEAÑOS","16/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Jorge Enrique Abello","DEMO","17/6/2026","","","En proceso","Instagram"],
+["Hablando de---Jorge Enrique","HABLANDO DE","18/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Sofia Garza- G","GRÁFICOS","19/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Reflexion","REFLEXION","20/6/2026","Desire Hernández","","En proceso","LINKEDIN"],
+["Día del padre","TEMPORALIDAD","21/6/2026","","","En proceso","Instagram"],
+["Renacer de la luna- E","ESTRENOS/ FINAL","22/6/2026","","","En proceso",""],
+["Hablando de---Guillermo Qui","HABLANDO DE","23/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Complices- Jesus castro*","TB","23/6/2026","","","En proceso","Instagram"],
+["Arantza Ruiz- TLC","TODAS LAS CARAS DE","24/6/2026","","","En proceso","Instagram"],
+["Tadeo Tovar- C","CUMPLEAÑOS","24/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Andrea Noli- DEMO","DEMO","25/6/2026","María Fernanda García","","En proceso",""],
+["REALITY FORO","REALITY FORO","25/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Leonardo Daniel- C","CUMPLEAÑOS","26/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Federico Ayos- Casting","CASTING","26/6/2026","","","En proceso","Instagram"],
+["BTS","EQUIPO ZUMA","27/6/2026","","","En proceso","Instagram"],
+["Pride Day","TEMPORALIDAD","28/6/2026","","","En proceso","Instagram"],
+["Ivanna Plantier- C","CUMPLEAÑOS","28/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Jorge aranda - C","CUMPLEAÑOS","28/6/2026","Desire Hernández","","En proceso","Instagram"],
+["Hablando de---Paty Maqueo","HABLANDO DE","29/6/2026","","","En proceso","Tiktok"],
+["Thali Garcia","TODAS LAS CARAS DE","29/6/2026","","","En proceso","Instagram"],
+["Reflexion","REFLEXION","30/6/2026","Desire Hernández","","En proceso","LINKEDIN"],
+["REALITY FORO","REALITY FORO","30/6/2026","Desire Hernández","","En proceso","Tiktok"],
+["Rocio Verdejo- el renacer de la luna","TALENTO ZUMA","30/6/2026","","","En proceso","Instagram"],
+["Claudia Lobo","DEMO","1/7/2026","Desire Hernández","","En proceso",""],
+["Pili Lara","CUMPLEAÑOS","1/7/2026","","","En proceso",""],
+["Ricardo Kleinbaum","TODAS LAS CARAS DE","3/7/2026","","","En proceso",""],
+["Mariana Lodoza","GRÁFICOS","5/7/2026","Desire Hernández","","En proceso",""],
+["Luz María","CUMPLEAÑOS","5/7/2026","","","En proceso",""],
+["El señor de los cielos- E","ESTRENOS/ FINAL","7/7/2026","","","En proceso",""],
+["El senor de los cielos","HABLANDO DE","8/7/2026","","","En proceso",""],
+["Casting Gaby Platas","CASTING","9/7/2026","","","En proceso","Instagram"],
+["Maria meouchi - Cantando","TALENTO ZUMA","11/7/2026","Noemi Fernández","Marina Soto","En proceso","Instagram"],
+["Ariane Pellicer- G","GRÁFICOS","13/7/2026","Desire Hernández","","En proceso","Instagram"],
+["Jorge Aranda","REACCION A PERSONAJES","15/7/2026","","","En proceso","Instagram"],
+["Giovanna Romo- TLC","TODAS LAS CARAS DE","17/7/2026","","","En proceso","Instagram"],
+["Fermin Martinez","CUMPLEAÑOS","17/7/2026","","","En proceso",""],
+["ARANTZA RUIZ -D","DEMO","19/7/2026","Noemi Fernández","Ivan Hernandez","En proceso","Instagram"],
+["Jos Aranalde","GET TO KNOW","21/7/2026","Noemi Fernández","","En proceso",""],
+["Baltimore Beltran","GRÁFICOS","23/7/2026","Desire Hernández","","En proceso","Instagram"],
+["Carmen Aud - Señor de los","TALENTO ZUMA","25/7/2026","","","En proceso",""],
+["BTS","EQUIPO ZUMA","27/7/2026","","","En proceso",""],
+["Job Huerta","CUMPLEAÑOS","27/7/2026","","","En proceso",""],
+["Roberta Burns- Señor de los","TALENTO ZUMA","29/7/2026","","","En proceso",""],
+["Mariana Lodoza- D","DEMO","31/7/2026","Noemi Fernández","","En proceso","Instagram"]
+];
+
+const SCRIPT_URL='https://script.google.com/a/macros/zumatalent.com/s/AKfycby0Blq1FVa32LBeSt9piVr1Ngg3fOklLzgC04AuR8Je32JSaiY-1Y5d4DZQRwYCvRvg/exec';
+
+function showBrief(id){
+  document.querySelectorAll('.brief-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.brief-sub').forEach(s=>s.classList.remove('active'));
+  document.getElementById('btab-'+id).classList.add('active');
+  document.getElementById('brief-'+id).classList.add('active');
+}
+
+async function enviarBriefing(){
+  const actor=document.getElementById('b-actor').value.trim();
+  const fecha=document.getElementById('b-fecha').value.trim();
+  const cat=document.getElementById('b-cat').value;
+  const canal=document.querySelector('input[name="b-canal"]:checked');
+  if(!actor||!fecha||!cat||!canal){alert('Por favor completa los campos requeridos: actor, fecha, categoría y plataforma.');return;}
+  const btn=document.querySelector('.brief-submit');
+  btn.textContent='Guardando...';btn.disabled=true;
+  const data={
+    nombre:actor,
+    categoria:cat,
+    fecha:fecha,
+    responsable:document.getElementById('b-resp').value,
+    canal:canal.value,
+    notas:document.getElementById('b-notas').value+
+      (document.getElementById('b-proyecto').value?' | Proyecto: '+document.getElementById('b-proyecto').value:'')
+  };
+  try{
+    await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(data),mode:'no-cors'});
+    document.getElementById('brief-success').classList.add('show');
+    btn.textContent='Guardar en el calendario →';btn.disabled=false;
+    document.getElementById('b-actor').value='';
+    document.getElementById('b-fecha').value='';
+    document.getElementById('b-cat').value='';
+    document.getElementById('b-resp').value='';
+    document.getElementById('b-proyecto').value='';
+    document.getElementById('b-notas').value='';
+    document.querySelector('input[name="b-canal"]:checked').checked=false;
+    setTimeout(()=>document.getElementById('brief-success').classList.remove('show'),4000);
+  }catch(e){
+    alert('Error al guardar. Intenta de nuevo.');
+    btn.textContent='Guardar en el calendario →';btn.disabled=false;
+  }
+}
+
+const SHEET_GID='1011358565';
+const CAT_COLORS={'TALENTO ZUMA':'#B5D4F4','ESTRENOS/ FINAL':'#9FE1CB','CUMPLEAÑOS':'#F4C0D1','GRÁFICOS':'#D3D1C7','GET TO KNOW':'#CECBF6','INSIDE ZUMA':'#C0DD97','REALITY FORO':'#FAC775','TRAILER':'#F5C4B3','CASTING':'#5DCAA5','BIENVENIDA':'#AFA9EC','EQUIPO ZUMA':'#B4B2A9','DEMO':'#ED93B1','TODAS LAS CARAS DE':'#85B7EB','UN DIA CON':'#97C459','TEMPORALIDAD':'#EF9F27','DINAMICAS':'#F0997B','HABLANDO DE':'#7F77DD','REFLEXION':'#1D9E75','TB':'#D85A30','REACCION A PERSONAJES':'#D4537E'};
+const CAT_TEXT={'TALENTO ZUMA':'#0C447C','ESTRENOS/ FINAL':'#085041','CUMPLEAÑOS':'#72243E','GRÁFICOS':'#444441','GET TO KNOW':'#3C3489','INSIDE ZUMA':'#27500A','REALITY FORO':'#633806','TRAILER':'#712B13','CASTING':'#0F6E56','BIENVENIDA':'#26215C','EQUIPO ZUMA':'#444441','DEMO':'#993556','TODAS LAS CARAS DE':'#185FA5','UN DIA CON':'#3B6D11','TEMPORALIDAD':'#854F0B','DINAMICAS':'#993C1D','HABLANDO DE':'#3C3489','REFLEXION':'#04342C','TB':'#4A1B0C','REACCION A PERSONAJES':'#4B1528'};
+let posts=[],view='list',calMonth={y:2026,m:4},chartsInit=false;
+
+function getNotes(k){try{return localStorage.getItem('zuma_note_'+k)||''}catch(e){return''}}
+function saveNote(k,v){try{localStorage.setItem('zuma_note_'+k,v)}catch(e){}}
+function noteKey(p){return(p.name+'_'+fmtD(p.date)).replace(/[^a-zA-Z0-9_]/g,'_')}
+function parseDate(s){if(!s)return null;let p=s.trim().split('/');if(p.length===3&&p[2].length===4)return new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));p=s.trim().split('-');if(p.length===3)return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));return null}
+function fmtD(d){if(!d)return'—';return d.getDate().toString().padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')}
+function monthKey(d){if(!d)return'';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function monthName(k){const[y,m]=k.split('-');const n=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];return n[parseInt(m)-1]+' '+y}
+
+function setPage(p){
+  document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.cal-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ptab-'+p).classList.add('active');
+  document.getElementById('page-'+p).classList.add('active');
+  if(p==='rpt'&&!chartsInit){initCharts();chartsInit=true}
+}
+
+function initCharts(){
+  const zuma='#5B2D8E',lime='#C8D830',dark='#1A1917',purple2='#2D1B69';
+  // Interacciones
+  new Chart(document.getElementById('chartInteracciones'),{type:'bar',data:{labels:['Instagram','Facebook','TikTok'],datasets:[{data:[370,6372,0],backgroundColor:[zuma,lime,dark],borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:11,weight:'500'}}}}}});
+  // Visualizaciones
+  new Chart(document.getElementById('chartVistas'),{type:'doughnut',data:{labels:['Facebook 151k','Instagram Reels 50k','IG Historias 52k'],datasets:[{data:[151570,50100,51930],backgroundColor:[lime,zuma,purple2],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:8}}}}});
+  // Países
+  new Chart(document.getElementById('chartPaises'),{type:'bar',data:{labels:['México','EEUU','Argentina','Perú','Colombia'],datasets:[{data:[70,8,5,4,3],backgroundColor:[zuma,lime,'#9F7DD1','#C8D830aa','#5B2D8Eaa'],borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+  // Edad
+  new Chart(document.getElementById('chartEdad'),{type:'bar',data:{labels:['13-17','18-24','25-34','35-44','45-54','55-64','65+'],datasets:[{data:[0.5,10,37,29,15,5,2],backgroundColor:['#E0D5F5','#C4AEE8',zuma,'#7B4DC0','#9F7DD1','#C4AEE8','#E0D5F5'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},callback:v=>v+'%'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+
+async function loadSheet(){
+  const dot=document.getElementById('sync-dot'),ls=document.getElementById('last-sync');
+  dot.classList.add('syncing');ls.textContent='Cargando...';
+  
+  posts=POSTS_DATA.map(r=>({
+    name:r[0],cat:r[1],date:parseDate(r[2]),
+    resp:r[3],parado:r[4],status:r[5],canal:r[6],copys:''
+  }));
+  
+  const now=new Date();
+  ls.textContent='Actualizado '+now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
+  dot.classList.remove('syncing');
+  renderAll();
+}
+
+function filtered(){
+  const q=document.getElementById('q').value.toLowerCase(),fc=document.getElementById('fc').value,fs=document.getElementById('fs').value,fr=document.getElementById('fr').value,fm=document.getElementById('fm').value;
+  return posts.filter(p=>{
+    if(q&&!p.name.toLowerCase().includes(q))return false;
+    if(fc&&p.cat!==fc)return false;if(fs&&p.status!==fs)return false;
+    if(fr&&p.resp!==fr)return false;if(fm&&(!p.date||monthKey(p.date)!==fm))return false;return true;
+  });
+}
+function statusTag(s){if(!s||s==='undefined')return'';const m={'Listo':'tag-listo','Publicado':'tag-publicado','En proceso':'tag-proceso','En curso':'tag-curso','Retrasado':'tag-retrasado','Programado':'tag-programado'};const ic={'Listo':'🟢','Publicado':'🟢','En proceso':'🟡','En curso':'🟡','Retrasado':'🔴','Programado':'🔵'};return`<span class="tag ${m[s]||'tag-proceso'}">${ic[s]||''} ${s}</span>`}
+function canalTag(c){if(!c||c==='undefined'||!c.trim())return'';if(c==='Instagram')return`<span class="tag tag-ig">📸 IG</span>`;if(c==='Tiktok')return`<span class="tag tag-tt">♪ TT</span>`;if(c==='LINKEDIN')return`<span class="tag tag-li">in LI</span>`;return`<span class="tag" style="background:#F0EEE9;color:#6B6860">${c}</span>`}
+function togglePanel(id){const p=document.getElementById('panel-'+id);if(!p)return;p.classList.toggle('open');const b=document.getElementById('expbtn-'+id);if(b)b.textContent=p.classList.contains('open')?'▲ cerrar':'✏️ copys / notas'}
+function saveNoteUI(id,key){const ta=document.getElementById('nota-'+id);if(!ta)return;saveNote(key,ta.value);const m=document.getElementById('savedmsg-'+id);if(m){m.classList.add('show');setTimeout(()=>m.classList.remove('show'),2000)}}
+
+function renderWeekBar(all){
+  const today=new Date();today.setHours(0,0,0,0);const week=new Date(today.getTime()+7*86400000);
+  const tw=all.filter(p=>p.date&&p.date>=today&&p.date<=week);
+  if(!tw.length){document.getElementById('week-bar').innerHTML='<span class="week-label">Esta semana</span><span style="font-size:12px;color:#9E9B95">Sin publicaciones programadas</span>';return}
+  const chips=tw.slice(0,6).map(p=>`<span class="week-chip" style="background:${CAT_COLORS[p.cat]||'#D3D1C7'};color:${CAT_TEXT[p.cat]||'#444441'}">${fmtD(p.date)} · ${p.name}</span>`).join('');
+  const more=tw.length>6?`<span style="font-size:11px;color:#9E9B95">+${tw.length-6} más</span>`:'';
+  document.getElementById('week-bar').innerHTML=`<span class="week-label">Esta semana</span><div class="week-posts">${chips}${more}</div>`;
+}
+function renderStats(fp){
+  const t=fp.length,ls=fp.filter(p=>p.status==='Listo'||p.status==='Programado').length,ep=fp.filter(p=>p.status==='En proceso').length,rt=fp.filter(p=>p.status==='Retrasado').length;
+  const today=new Date();today.setHours(0,0,0,0);const week=new Date(today.getTime()+7*86400000);
+  const pr=fp.filter(p=>p.date&&p.date>=today&&p.date<=week).length;
+  document.getElementById('stats').innerHTML=`<div class="stat"><div class="stat-n">${t}</div><div class="stat-l">Total posts</div></div><div class="stat"><div class="stat-n green">${ls}</div><div class="stat-l">Listos</div></div><div class="stat"><div class="stat-n amber">${ep}</div><div class="stat-l">En proceso</div></div><div class="stat"><div class="stat-n red">${rt}</div><div class="stat-l">Retrasados</div></div><div class="stat"><div class="stat-n blue">${pr}</div><div class="stat-l">Esta semana</div></div>`;
+}
+function renderLegend(){
+  document.getElementById('legend').innerHTML=Object.keys(CAT_COLORS).map(c=>`<div class="leg-item" onclick="toggleCat('${c}')" id="leg-${c.replace(/[^a-z]/gi,'_')}"><div class="leg-dot" style="background:${CAT_COLORS[c]}"></div>${c.toLowerCase()}</div>`).join('');
+}
+function toggleCat(cat){const s=document.getElementById('fc');s.value=s.value===cat?'':cat;renderAll()}
+function renderList(fp){
+  const byMonth={};fp.forEach(p=>{const k=p.date?monthKey(p.date):'z';if(!byMonth[k])byMonth[k]=[];byMonth[k].push(p)});
+  const keys=Object.keys(byMonth).sort();
+  if(!keys.length){document.getElementById('main-view').innerHTML='<div class="empty-state"><p>Sin publicaciones con estos filtros</p></div>';return}
+  let html='';
+  keys.forEach(k=>{
+    html+=`<div class="month-group"><div class="month-header">${k==='z'?'Sin fecha':monthName(k)}<span class="month-count">${byMonth[k].length}</span></div>`;
+    byMonth[k].sort((a,b)=>(a.date?a.date.getTime():0)-(b.date?b.date.getTime():0)).forEach((p,i)=>{
+      const col=CAT_COLORS[p.cat]||'#D3D1C7',txt=CAT_TEXT[p.cat]||'#444441',uid=k+'_'+i,nkey=noteKey(p),savedNote=getNotes(nkey);
+      const hasCopy=p.copys&&p.copys.trim()&&p.copys!=='undefined',hasNote=savedNote.trim();
+      const dot=(hasCopy||hasNote)?` <span style="width:6px;height:6px;border-radius:50%;background:#3B6D11;display:inline-block;vertical-align:middle;margin-left:4px"></span>`:'';
+      html+=`<div class="post-row"><div class="post-row-top" onclick="togglePanel('${uid}')"><div class="post-date">${p.date?fmtD(p.date):'—'}</div><div class="post-cat-dot" style="background:${col}"></div><div class="post-body"><div class="post-name">${p.name}${dot}</div><div class="post-tags"><span class="tag" style="background:${col};color:${txt}">${p.cat}</span>${statusTag(p.status)}${canalTag(p.canal)}${p.parado&&p.parado!=='undefined'?`<span class="tag" style="background:#FCEBEB;color:#A32D2D">⚠ ${p.parado}</span>`:''}</div></div><div class="post-meta-right"><div class="post-resp">${p.resp&&p.resp!=='undefined'?p.resp:''}</div><span class="expand-btn" id="expbtn-${uid}">✏️ copys / notas</span></div></div><div class="notes-panel" id="panel-${uid}"><div class="notes-grid"><div><div class="notes-col-title">📋 Copy del Sheet</div><div class="copy-from-sheet">${hasCopy?p.copys:'<span class="copy-empty">Sin copy todavía</span>'}</div></div><div><div class="notes-col-title">✏️ Mis notas extra</div><textarea class="notes-textarea" id="nota-${uid}" placeholder="Escribe aquí tu copy o notas...">${savedNote}</textarea><div class="notes-actions"><button class="save-note-btn" onclick="saveNoteUI('${uid}','${nkey}')">Guardar</button><span class="saved-msg" id="savedmsg-${uid}">✓ Guardado</span></div></div></div></div></div>`;
+    });html+='</div>';
+  });document.getElementById('main-view').innerHTML=html;
+}
+function renderCal(fp){
+  const{y,m}=calMonth,MN=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],byDay={};
+  fp.forEach(p=>{if(p.date&&p.date.getFullYear()===y&&p.date.getMonth()===m){const d=p.date.getDate();if(!byDay[d])byDay[d]=[];byDay[d].push(p)}});
+  const first=new Date(y,m,1),last=new Date(y,m+1,0),today=new Date();
+  const statusDot={'Listo':'#3B6D11','Publicado':'#3B6D11','En proceso':'#856404','En curso':'#856404','Retrasado':'#A32D2D','Programado':'#185FA5'};
+  let html=`<div class="cal-nav"><button class="cal-nav-btn" onclick="prevMonth()">‹</button><span class="cal-month-title">${MN[m]} ${y}</span><button class="cal-nav-btn" onclick="nextMonth()">›</button></div><div class="cal-grid"><div class="cal-day-head">Dom</div><div class="cal-day-head">Lun</div><div class="cal-day-head">Mar</div><div class="cal-day-head">Mié</div><div class="cal-day-head">Jue</div><div class="cal-day-head">Vie</div><div class="cal-day-head">Sáb</div>`;
+  for(let i=0;i<first.getDay();i++)html+=`<div class="cal-cell other-month"></div>`;
+  for(let d=1;d<=last.getDate();d++){
+    const isT=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d,ps=byDay[d]||[];
+    const chips=ps.slice(0,3).map(p=>{const sd=statusDot[p.status]?`<span class="cal-dot-s" style="background:${statusDot[p.status]}"></span>`:'';return`<span class="cal-chip" style="background:${CAT_COLORS[p.cat]||'#D3D1C7'};color:#1A1917">${sd}${p.name}</span>`}).join('');
+    const more=ps.length>3?`<div class="cal-more">+${ps.length-3} más</div>`:'';
+    html+=`<div class="cal-cell${isT?' today-cell':''}"><div class="cal-date-num">${d}</div>${chips}${more}</div>`;
+  }
+  const rem=(7-(first.getDay()+last.getDate())%7)%7;
+  for(let i=0;i<rem;i++)html+=`<div class="cal-cell other-month"></div>`;
+  html+='</div>';document.getElementById('main-view').innerHTML=html;
+}
+function prevMonth(){calMonth.m--;if(calMonth.m<0){calMonth.m=11;calMonth.y--}renderAll()}
+function nextMonth(){calMonth.m++;if(calMonth.m>11){calMonth.m=0;calMonth.y++}renderAll()}
+function setView(v){view=v;document.getElementById('btn-list').classList.toggle('active',v==='list');document.getElementById('btn-cal').classList.toggle('active',v==='cal');renderAll()}
+function renderAll(){
+  const fp=filtered();renderWeekBar(posts);renderStats(fp);
+  if(view==='list')renderList(fp);else renderCal(fp);
+  Object.keys(CAT_COLORS).forEach(c=>{const el=document.getElementById('leg-'+c.replace(/[^a-z]/gi,'_'));if(el)el.classList.toggle('active-filter',document.getElementById('fc').value===c)});
+}
+document.getElementById('fm').value='2026-06';
+renderLegend();loadSheet();
+</script>
+</body>
+</html>
